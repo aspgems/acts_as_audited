@@ -22,6 +22,7 @@ end
 class AuditSweeper < ActionController::Caching::Sweeper #:nodoc:
   def before_create(audit)
     audit.user ||= current_user
+    audit.user_ip = request.remote_ip
   end
 
   def current_user
