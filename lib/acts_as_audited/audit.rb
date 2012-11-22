@@ -16,6 +16,48 @@ class Audit < ActiveRecord::Base
 
   serialize :changes
 
+  [:auditable_type, :auditable_id].each do |attr|
+    named_scope "by_#{attr}".to_sym, lambda {|value|
+      return if value.blank?
+      { :conditions => { attr => value } }
+    }
+  end
+
+  def self.with_dates(begin_date, end_date)
+    return self if begin_date.blank? && end_date.blank?
+    begin_date = Time.zone.parse(begin_date.gsub('/','-')) if begin_date
+    end_date = Time.zone.parse(end_date.gsub('/', '-')) if end_date
+    if begin_date.present? && end_date.present?
+      between_dates(begin_date, end_date)
+    elsif begin_date.present? && end_date.blank?
+      newer_than(begin_date)
+    elsif begin_date.blank? && end_date.present?
+      older_than(end_date)
+    end
+  end
+
+  named_scope :between_dates, lambda {|begin_date, end_date|
+    return if begin_date.blank? && end_date.blank?
+    { :conditions => { :created_at => begin_date..end_date } }
+  }
+
+  named_scope :newer_than, lambda {|date|
+    return if date.blank?
+    { :conditions => [ 'audits.created_at >= ?', date ] }
+  }
+
+  named_scope :older_than, lambda {|date|
+    return if date.blank?
+    { :conditions => [ 'audits.created_at <= ?', date ] }
+  }
+
+  def self.search(params)
+    return self if params.blank?
+    by_auditable_type(params.auditable_type).
+      by_auditable_id(params.auditable_id).
+      with_dates(params.begin_date, params.end_date)
+  end
+
   cattr_accessor :audited_class_names
   self.audited_class_names = Set.new
 
