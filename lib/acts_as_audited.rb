@@ -198,7 +198,13 @@ module CollectiveIdea #:nodoc:
         end
 
         def write_audit(attrs)
-          self.audits.create attrs if auditing_enabled
+          if auditing_enabled || !only_changed_delta?
+            self.audits.create attrs
+          end
+        end
+
+        def only_changed_delta?
+          changes.size == 1 && changes.keys.include?(:delta)
         end
       end # InstanceMethods
 
